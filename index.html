@@ -1,16 +1,242 @@
-// This tells the phone to keep the app working even if you're offline
-self.addEventListener('install', (e) => {
-  e.waitUntil(
-    caches.open('lyric-link-v1').then((cache) => {
-      return cache.addAll(['./', 'index.html']); 
-    })
-  );
-});
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NEURAL_LYRIC_LINK_MK_V</title>
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    
+    
+    <style>
+        :root { 
+            --neon-blue: #00f2ff; 
+            --neon-pink: #ff0055; 
+            --neon-green: #00ff88; 
+            --bg: #050505;
+        }
 
-self.addEventListener('fetch', (e) => {
-  e.respondWith(
-    caches.match(e.request).then((response) => {
-      return response || fetch(e.request);
-    })
-  );
-});
+        body { 
+            background: var(--bg); 
+            color: var(--neon-blue); 
+            font-family: 'Courier New', monospace; 
+            padding: 15px; 
+            margin: 0; 
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .header {
+            font-size: 0.75rem;
+            letter-spacing: 2px;
+            color: var(--neon-pink);
+            border-bottom: 1px solid var(--neon-blue);
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        #search-box {
+            width: 100%; 
+            background: #111; 
+            border: 1px solid var(--neon-blue);
+            color: var(--neon-blue); 
+            padding: 15px; 
+            font-family: inherit;
+            font-size: 1rem; 
+            box-sizing: border-box; 
+            outline: none;
+            text-transform: uppercase;
+        }
+
+        button {
+            width: 100%; 
+            padding: 15px; 
+            background: rgba(0, 242, 255, 0.05); 
+            border: 2px solid var(--neon-blue); 
+            color: var(--neon-blue);
+            font-family: inherit; 
+            font-weight: bold; 
+            margin-top: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+        button:active { background: var(--neon-blue); color: #000; }
+
+        #results-terminal {
+            margin-top: 20px;
+            border: 1px solid rgba(0, 242, 255, 0.3);
+            background: rgba(0, 0, 0, 0.8);
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #status-bar {
+            background: rgba(0, 242, 255, 0.1);
+            padding: 8px 12px;
+            font-size: 0.65rem;
+            border-bottom: 1px solid rgba(0, 242, 255, 0.3);
+            display: flex;
+            justify-content: space-between;
+        }
+
+        #output-stream {
+            padding: 10px;
+            overflow-y: auto;
+            flex-grow: 1;
+        }
+
+        /* CLICKABLE MATCH CARDS */
+        .match-card {
+            border-left: 3px solid var(--neon-green); 
+            background: #0d0d0d;
+            padding: 15px; 
+            margin-bottom: 12px; 
+            text-decoration: none;
+            display: block;
+            transition: 0.2s;
+            animation: slideIn 0.3s ease-out;
+        }
+        .match-card:active {
+            background: rgba(0, 255, 136, 0.1);
+            transform: scale(0.98);
+        }
+
+        .song-title { color: var(--neon-green); font-weight: bold; font-size: 0.9rem; margin-bottom: 4px; }
+        .artist-name { font-size: 0.75rem; color: var(--neon-blue); }
+        
+        .meta-info { 
+            font-size: 0.65rem; 
+            opacity: 0.6; 
+            margin-top: 8px; 
+            display: flex;
+            justify-content: space-between;
+            border-top: 1px solid rgba(0, 242, 255, 0.1);
+            padding-top: 5px;
+        }
+
+        @keyframes slideIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* LOADING ANIMATION */
+        .scan-anim {
+            height: 2px;
+            background: var(--neon-pink);
+            width: 100%;
+            position: relative;
+            animation: scanLine 2s infinite linear;
+        }
+        @keyframes scanLine { 0% { top: 0; } 100% { top: 100px; } }
+
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: var(--neon-blue); }
+    </style>
+    <link rel="icon" type="image/png" sizes="192x192" href="https://img.icons8.com/nolan/192/1A6DFF/C822FF/audio-wave.png">
+
+<link rel="apple-touch-icon" href="https://img.icons8.com/nolan/192/1A6DFF/C822FF/audio-wave.png">
+
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#050505"> 
+</head>
+<body>
+
+    <div class="header">
+        <span class="material-icons" style="font-size: 1.2rem;">graphic_eq</span>
+        LYRIC_SIGNATURE_SCANNER // MK_V
+    </div>
+
+    <input type="text" id="search-box" placeholder="TYPE_LYRICS_HERE..." autocomplete="off">
+    
+    <button id="scan-btn">
+        <span class="material-icons">radar</span>
+        EXECUTE_DEEP_SCAN
+    </button>
+
+    <div id="results-terminal">
+        <div id="status-bar">
+            <span>> SYSTEM_STATUS: ONLINE</span>
+            <span id="match-count">MATCHES: 0</span>
+        </div>
+        <div id="output-stream">
+            <div style="opacity: 0.3; font-size: 0.8rem; text-align: center; margin-top: 50px;">
+                <span class="material-icons" style="font-size: 3rem; display: block; margin-bottom: 10px;">settings_input_antenna</span>
+                AWAITING_SIGNAL_INPUT...
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const box = document.getElementById('search-box');
+        const btn = document.getElementById('scan-btn');
+        const output = document.getElementById('output-stream');
+        const status = document.getElementById('match-count');
+
+        btn.onclick = () => {
+            const query = box.value.trim();
+            if(!query) return;
+
+            // UI Refresh
+            output.innerHTML = '<div class="scan-anim"></div><div style="text-align:center; margin-top:20px; font-size:0.7rem;">DECODING_FINGERPRINT...</div>';
+            navigator.vibrate(50);
+
+            // Fetch Data
+            const script = document.createElement('script');
+            // LIMIT=20 for deep search
+            const apiUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&limit=20&entity=song&callback=renderResults`;
+            script.src = apiUrl;
+            document.body.appendChild(script);
+            script.onload = () => script.remove();
+        };
+
+        window.renderResults = (data) => {
+            output.innerHTML = "";
+            if(data.results && data.results.length > 0) {
+                status.innerText = `MATCHES: ${data.results.length}`;
+                
+                data.results.forEach(track => {
+                    // Extract Year from releaseDate string (e.g., 2024-05-15...)
+                    const releaseYear = track.releaseDate ? track.releaseDate.substring(0, 4) : "N/A";
+                    
+                    const card = document.createElement('a');
+                    card.className = 'match-card';
+                    card.href = track.trackViewUrl; // Links to iTunes/Apple Music
+                    card.target = "_blank"; // Opens in new tab/app
+                    
+                    card.innerHTML = `
+                        <div class="song-title">${track.trackName.toUpperCase()}</div>
+                        <div class="artist-name">BY ${track.artistName.toUpperCase()}</div>
+                        <div class="meta-info">
+                            <span>GENRE: ${track.primaryGenreName.toUpperCase()}</span>
+                            <span style="color:var(--neon-pink)">YEAR: ${releaseYear}</span>
+                        </div>
+                    `;
+                    output.appendChild(card);
+                });
+                
+                navigator.vibrate([100, 50, 100]);
+            } else {
+                status.innerText = "MATCHES: 0";
+                output.innerHTML = "<div style='color:var(--neon-pink); padding:40px; text-align:center;'>NO_MATCH_FOUND_IN_DATA_STREAM</div>";
+            }
+        };
+
+        box.addEventListener("keypress", (e) => { if (e.key === "Enter") btn.click(); });
+    </script>
+    <script>
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('./sw.js');
+  }
+</script>
+
+</body>
+</html>
